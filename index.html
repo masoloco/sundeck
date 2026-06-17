@@ -135,12 +135,12 @@
   .nprow{display:flex;gap:8px;align-items:stretch;}
   .np{flex:1;min-width:0;background:var(--white);border:2px solid var(--ink);border-radius:12px;box-shadow:3px 3px 0 var(--ink);
     padding:9px 12px;display:flex;flex-direction:column;justify-content:center;gap:5px;}
-  .np .title{font-weight:700;font-size:20px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .np .artist{font-size:15px;color:var(--ink2);text-transform:uppercase;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .np .title{font-weight:700;font-size:22px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .np .artist{font-size:15px;color:var(--ink2);text-transform:uppercase;letter-spacing:1.5px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .progress{display:flex;align-items:center;gap:8px;font-family:'VT323',monospace;font-size:15px;color:var(--ink2);margin-top:1px;}
   .bar{flex:1;height:6px;border-radius:99px;background:#e0d4bb;border:1.5px solid var(--ink);position:relative;cursor:pointer;}
-  .bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--ink);width:0%;}
-  .bar .knob{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;background:var(--white);border:2px solid var(--ink);transform:translate(-50%,-50%);left:0%;}
+  .bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--amber);width:0%;}
+  .bar .knob{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;background:var(--white);border:2px solid var(--ink);transform:translate(-50%,-50%);left:0%;box-shadow:0 0 6px var(--amber);}
   .sidebtns{display:flex;flex-direction:column;gap:8px;flex:0 0 auto;}
   .sidebtns .sqbtn{flex:1;height:auto;min-width:46px;width:46px;}
 
@@ -164,7 +164,7 @@
     font-family:'VT323',monospace;font-weight:400;font-size:14px;letter-spacing:.4px;padding:6px 2px 4px;
     cursor:pointer;box-shadow:3px 3px 0 var(--ink);text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:5px;}
   .nav button:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink);}
-  .nav button.active{background:var(--amber);color:var(--accent-ink);}
+  .nav button.active{background:var(--amber);color:var(--accent-ink);transform:translateY(-2px);box-shadow:3px 5px 0 var(--ink);}
   .nav button svg{display:block;}
 
   /* drawer */
