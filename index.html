@@ -68,13 +68,27 @@
   .batt::after{content:"";position:absolute;right:-4px;top:5px;bottom:5px;width:2px;background:var(--ink);border-radius:1px;}
 
   /* top bar */
-  .topbar{display:flex;align-items:center;gap:8px;margin:0 0 6px;}
+  .topbar{display:flex;align-items:center;gap:8px;margin:0 0 6px;position:relative;}
   .sqbtn{height:40px;min-width:44px;border:2px solid var(--ink);border-radius:11px;background:var(--paper3);
     box-shadow:2px 2px 0 var(--ink);display:flex;align-items:center;justify-content:center;gap:6px;
     color:var(--ink);cursor:pointer;flex:0 0 auto;padding:0 10px;}
   .sqbtn:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink);}
   .sqbtn.on{background:var(--amber);}
   .sqbtn svg{display:block;}
+  #gearBtn{position:relative;}
+  #gearBtn.timing::after{content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:var(--amber);border:2px solid var(--paper);}
+  .settings-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:30;width:236px;
+    background:var(--white);border:2.5px solid var(--ink);border-radius:14px;box-shadow:4px 5px 0 var(--ink);padding:12px 13px 13px;
+    transform-origin:8px -6px;transform:scale(.78) translateY(-8px);opacity:0;pointer-events:none;
+    transition:transform .19s cubic-bezier(.2,.9,.3,1.25),opacity .15s ease;}
+  .settings-pop.open{transform:scale(1) translateY(0);opacity:1;pointer-events:auto;}
+  .set-sec{margin-bottom:11px;}
+  .set-lbl{font-family:'VT323',monospace;font-size:16px;color:var(--ink2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;}
+  .set-opts{display:flex;gap:5px;}
+  .set-opts button{flex:1;min-width:0;background:var(--paper3);border:2px solid var(--ink);border-radius:8px;font-family:'VT323',monospace;font-size:15px;color:var(--ink);padding:5px 2px;cursor:pointer;line-height:1;}
+  .set-opts button.on{background:var(--amber);color:var(--accent-ink);}
+  .set-disconnect{width:100%;margin-top:1px;background:none;border:2px solid var(--like);border-radius:9px;font-family:'VT323',monospace;font-size:16px;letter-spacing:.4px;color:var(--like);padding:7px;cursor:pointer;}
+  .set-disconnect:active{transform:translateY(1px);}
   .wordmark{flex:1;display:flex;align-items:baseline;justify-content:center;gap:1px;color:var(--on-bg);}
   .wordmark .logo{font-family:'VT323',monospace;font-size:42px;letter-spacing:1px;line-height:.85;}
   .wordmark .fm{font-family:'VT323',monospace;font-size:30px;color:var(--amber-dim);line-height:.85;}
@@ -100,8 +114,8 @@
     isolation:isolate;clip-path:inset(0 round 7px);-webkit-clip-path:inset(0 round 7px);
     background:radial-gradient(120% 120% at 50% 30%, #2a2017, #110d09);box-shadow:inset 0 0 24px rgba(0,0,0,.7);}
   .cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:inherit;}
-  .cover::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
-    background-image:radial-gradient(rgba(0,0,0,.5) 0.6px, transparent 0.7px);background-size:3px 3px;mix-blend-mode:multiply;opacity:.45;}
+  .cover::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;clip-path:inset(0 round 6px);-webkit-clip-path:inset(0 round 6px);
+    background-image:radial-gradient(rgba(0,0,0,.4) 0.6px, transparent 0.7px);background-size:3px 3px;opacity:.5;}
   .cover .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:inherit;}
   .cover .ph .mk{font-family:'DM Serif Display',serif;font-size:40px;color:#5a4a35;transform:scaleY(1.15);opacity:.6;}
   .footstrip{display:flex;align-items:center;gap:6px;margin-top:4px;padding:0 2px;}
@@ -203,14 +217,31 @@
 <div class="app" id="app">
   <div class="statusbar">
     <div class="left"><span id="clockChip"><b id="clock">--:--</b></span></div>
-    <div class="right">
-      <button class="sbtn" id="themeBtn" title="Theme"><span class="ic" id="themeIc">&#9728;</span></button>
-      <button class="sbtn" id="sleepBtn" title="Sleep timer"><span class="ic">&#9790;</span><span id="sleepLbl"></span></button>
-    </div>
   </div>
 
   <div class="topbar">
     <button class="sqbtn" id="gearBtn" title="Settings">&#9881;</button>
+    <div class="settings-pop" id="settingsPop">
+      <div class="set-sec">
+        <div class="set-lbl">Theme</div>
+        <div class="set-opts" id="themeOpts">
+          <button data-theme="day">Day</button>
+          <button data-theme="sunset">Sunset</button>
+          <button data-theme="night">Night</button>
+        </div>
+      </div>
+      <div class="set-sec">
+        <div class="set-lbl">Sleep timer</div>
+        <div class="set-opts" id="sleepOpts">
+          <button data-min="0">Off</button>
+          <button data-min="15">15m</button>
+          <button data-min="30">30m</button>
+          <button data-min="60">60m</button>
+          <button data-min="-1">End</button>
+        </div>
+      </div>
+      <button class="set-disconnect" id="disconnectBtn">Disconnect Spotify</button>
+    </div>
     <div class="wordmark"><span class="logo">SUNDECK</span><span class="fm">.fm</span></div>
     <div class="toprt">
       <button class="sqbtn" id="playToggle" title="Play / pause"><span class="led" id="led"></span>
@@ -624,7 +655,7 @@ function loadWeather(){ if(!navigator.geolocation) return; navigator.geolocation
 })();
 
 $("connectBtn").addEventListener("click",beginAuth);
-$("gearBtn").addEventListener("click",()=>{ if(confirm("Disconnect Spotify?")){ store.clear(); location.reload(); } });
+$("gearBtn").addEventListener("click",(e)=>{ e.stopPropagation(); $("settingsPop").classList.toggle("open"); });
 $("playToggle").addEventListener("click",togglePlay);
 $("shuffleBtn").addEventListener("click",toggleShuffle);
 $("likeBtn").addEventListener("click",toggleLike);
@@ -638,11 +669,15 @@ document.querySelectorAll(".nav button").forEach(b=>b.addEventListener("click",(
 $("drawerClose").addEventListener("click",closeDrawer);
 $("searchInput").addEventListener("input",onSearchInput);
 
+/* settings popover */
+$("disconnectBtn").addEventListener("click",()=>{ if(confirm("Disconnect Spotify?")){ store.clear(); location.reload(); } });
+document.addEventListener("click",(e)=>{ const pop=$("settingsPop"); if(!pop.classList.contains("open")) return; if(pop.contains(e.target)||$("gearBtn").contains(e.target)) return; pop.classList.remove("open"); });
+
 /* themes */
-const THEMES=["day","sunset","night"], THEME_IC={day:"☀",sunset:"☼",night:"☾"};
-function applyTheme(t){ if(!THEMES.includes(t)) t="day"; document.documentElement.setAttribute("data-theme",t); $("themeIc").textContent=THEME_IC[t]; try{ localStorage.setItem("sundeck_theme",t); }catch(_){} }
+const THEMES=["day","sunset","night"];
+function applyTheme(t){ if(!THEMES.includes(t)) t="day"; document.documentElement.setAttribute("data-theme",t); try{ localStorage.setItem("sundeck_theme",t); }catch(_){} document.querySelectorAll("#themeOpts button").forEach(b=>b.classList.toggle("on",b.dataset.theme===t)); }
 (function(){ let t="day"; try{ t=localStorage.getItem("sundeck_theme")||"day"; }catch(_){} applyTheme(t); })();
-$("themeBtn").addEventListener("click",()=>{ const cur=document.documentElement.getAttribute("data-theme")||"day"; const next=THEMES[(THEMES.indexOf(cur)+1)%THEMES.length]; applyTheme(next); toast("Theme: "+next); });
+document.querySelectorAll("#themeOpts button").forEach(b=>b.addEventListener("click",()=>applyTheme(b.dataset.theme)));
 
 /* visualizer modes */
 function setViz(m){ vizMode=m; try{ localStorage.setItem("sundeck_viz",m); }catch(_){} document.querySelectorAll(".badge").forEach(b=>b.classList.toggle("hl",b.dataset.viz===m)); }
@@ -651,15 +686,17 @@ setViz(vizMode);
 
 /* sleep timer */
 function clearSleep(){ if(sleepTimer){ clearTimeout(sleepTimer); sleepTimer=null; } }
-function endSleep(){ try{ if(player) player.pause(); }catch(_){} toast("Sleep timer — paused"); sleepIdx=0; $("sleepBtn").classList.remove("on"); $("sleepLbl").textContent=""; clearSleep(); }
-$("sleepBtn").addEventListener("click",()=>{
-  sleepIdx=(sleepIdx+1)%SLEEP_OPTS.length; const m=SLEEP_OPTS[sleepIdx]; clearSleep();
-  $("sleepBtn").classList.toggle("on",m!==0);
-  $("sleepLbl").textContent = m===0?"":(m===-1?"♪":m+"m");
+function refreshSleepUI(){ const m=SLEEP_OPTS[sleepIdx]; document.querySelectorAll("#sleepOpts button").forEach(b=>b.classList.toggle("on",(+b.dataset.min)===m)); $("gearBtn").classList.toggle("timing",m!==0); }
+function endSleep(){ try{ if(player) player.pause(); }catch(_){} toast("Sleep timer — paused"); sleepIdx=0; clearSleep(); refreshSleepUI(); }
+function setSleep(m){
+  sleepIdx=Math.max(0,SLEEP_OPTS.indexOf(m)); clearSleep();
   if(m>0){ sleepTimer=setTimeout(endSleep,m*60000); toast("Sleep in "+m+" min"); }
   else if(m===-1){ sleepTimer=setTimeout(endSleep,Math.max(1000,durMs-curMs)); toast("Sleep at end of track"); }
   else toast("Sleep timer off");
-});
+  refreshSleepUI();
+}
+document.querySelectorAll("#sleepOpts button").forEach(b=>b.addEventListener("click",()=>setSleep(+b.dataset.min)));
+refreshSleepUI();
 
 /* queue / up next */
 function qRow(tr,now){
