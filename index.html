@@ -49,7 +49,7 @@
   .grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.045;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
   .app{position:relative;z-index:2;height:100%;max-width:440px;margin:0 auto;overflow:hidden;
-    display:flex;flex-direction:column;padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom);}
+    display:flex;flex-direction:column;padding:env(safe-area-inset-top) 14px max(env(safe-area-inset-bottom),10px);}
 
   /* status bar */
   .statusbar{display:flex;align-items:center;justify-content:space-between;color:var(--on-bg);
@@ -99,7 +99,7 @@
   .led{width:11px;height:11px;border-radius:50%;background:#7a2a18;box-shadow:inset 0 0 3px #000;flex:0 0 auto;}
   .led.on{background:var(--led);box-shadow:0 0 9px var(--led),0 0 3px #fff inset;}
 
-  .stage{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:7px;padding-bottom:5px;}
+  .stage{flex:1;min-height:0;overflow:visible;display:flex;flex-direction:column;gap:7px;padding:0 1px 6px 0;}
 
   /* deck */
   .hifi{background:linear-gradient(180deg,#1c1712,#120e0a);border:2.5px solid var(--ink);border-radius:18px;
@@ -117,7 +117,8 @@
     isolation:isolate;clip-path:inset(0 round 7px);-webkit-clip-path:inset(0 round 7px);
     background:radial-gradient(120% 120% at 50% 30%, #2a2017, #110d09);box-shadow:inset 0 0 24px rgba(0,0,0,.7);}
   .cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:inherit;}
-  .cover::after{content:none;}
+  .cover::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;clip-path:inset(0 round 6px);-webkit-clip-path:inset(0 round 6px);
+    background-image:radial-gradient(rgba(0,0,0,.4) 0.6px, transparent 0.7px);background-size:3px 3px;opacity:.5;}
   .cover .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:inherit;}
   .cover .ph .mk{font-family:'DM Serif Display',serif;font-size:40px;color:#5a4a35;transform:scaleY(1.15);opacity:.6;}
   .footstrip{display:flex;align-items:center;gap:6px;margin-top:4px;padding:0 2px;}
