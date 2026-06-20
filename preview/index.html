@@ -191,6 +191,10 @@
   .qx:active{opacity:1;}
   .qadd{flex:0 0 auto;background:var(--paper3);border:2px solid var(--ink);border-radius:8px;width:32px;height:32px;font-size:18px;color:var(--ink);cursor:pointer;box-shadow:2px 2px 0 var(--ink);line-height:1;padding:0;}
   .qadd:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink);}
+  .qtabs{margin-bottom:12px;}
+  .qitem.qtap{cursor:pointer;}
+  .qitem.qtap:active{background:var(--white);}
+  .qskip{flex:0 0 auto;color:var(--amber-dim);font-size:19px;padding:4px 5px;line-height:1;}
 
   /* drawer */
   .drawer{position:fixed;z-index:5;left:0;right:0;bottom:0;height:74%;background:var(--white);border-top:3px solid var(--ink);
@@ -379,7 +383,7 @@ const store={
 let player=null, deviceId=null, token=null;
 let isPlaying=false, curMs=0, durMs=0, lastTick=0, seeking=false;
 let curTrackId=null, isLiked=false, shuffleOn=false, repeatMode="off";
-let sq=[], sqIndex=-1, sqActive=false, queueOpen=false;   // Sundeck-managed Up Next
+let sq=[], sqIndex=-1, sqActive=false, queueOpen=false, queueTab="sundeck";   // Sundeck-managed Up Next
 try{ sq=JSON.parse(localStorage.getItem("sundeck_sq")||"[]")||[]; }catch(_){ sq=[]; }
 function sqSave(){ try{ localStorage.setItem("sundeck_sq", JSON.stringify(sq)); }catch(_){} }
 let vizMode="dots"; try{ vizMode=localStorage.getItem("sundeck_viz")||"dots"; }catch(_){}
@@ -448,7 +452,8 @@ function onState(s){
   setNowPlaying(tr);
   if(tr && tr.id!==curTrackId){
     curTrackId=tr.id; refreshLike();
-    if(sqActive){ const ni=sq.findIndex(t=>t.id===tr.id); if(ni>=0){ sqIndex=ni; if(queueOpen) renderQueue(); } }
+    if(sqActive){ const ni=sq.findIndex(t=>t.id===tr.id); if(ni>=0) sqIndex=ni; }
+    if(queueOpen) refreshQueue();
   }
 }
 function setNowPlaying(tr){
@@ -812,14 +817,14 @@ function qAddBtn(tr){
   b.addEventListener("click",(e)=>{ e.stopPropagation(); sqAdd(tr); });
   return b;
 }
-function sqAdd(tr){ const o=sqObj(tr); if(!o) return; sq.push(o); sqSave(); toast("Added to Up Next ☀"); if(queueOpen) renderQueue(); }
-function sqRemove(i){ const cur=(sqActive&&sqIndex>=0)?sq[sqIndex]:null; sq.splice(i,1); sqIndex=cur?sq.indexOf(cur):-1; if(sqIndex<0) sqActive=false; sqSave(); renderQueue(); }
+function sqAdd(tr){ const o=sqObj(tr); if(!o) return; sq.push(o); sqSave(); toast("Added to Up Next ☀"); if(queueOpen&&queueTab==="sundeck") refreshQueue(); }
+function sqRemove(i){ const cur=(sqActive&&sqIndex>=0)?sq[sqIndex]:null; sq.splice(i,1); sqIndex=cur?sq.indexOf(cur):-1; if(sqIndex<0) sqActive=false; sqSave(); refreshQueue(); }
 async function sqPlay(i){
   if(!deviceId){ toast("Player warming up…"); return; }
   if(i<0||i>=sq.length) return;
   sqActive=true; sqIndex=i;
   const uris=sq.slice(i).map(t=>t.uri);
-  try{ await api(`/me/player/play?device_id=${deviceId}`,{method:"PUT",body:JSON.stringify({uris})}); setSource("Up Next"); renderQueue(); }
+  try{ await api(`/me/player/play?device_id=${deviceId}`,{method:"PUT",body:JSON.stringify({uris})}); setSource("Up Next"); refreshQueue(); }
   catch(e){ toast("Couldn't play"); }
 }
 async function sqReapply(){
@@ -828,12 +833,19 @@ async function sqReapply(){
   const uris=sq.slice(sqIndex).map(t=>t.uri);
   try{ await api(`/me/player/play?device_id=${deviceId}`,{method:"PUT",body:JSON.stringify({uris,position_ms:pos})}); }catch(e){}
 }
-function renderQueue(){
+function refreshQueue(){ if(queueOpen) renderQueueDrawer(); }
+function renderQueueDrawer(){
   $("drawerTitle").textContent="Up Next"; $("searchBox").classList.add("hidden");
   const body=$("drawerBody");
-  if(!sq.length){ body.innerHTML='<div class="muted">Your Up Next is empty.<br>Tap ＋ on any song in Search or Library to add it here, then drag to reorder.</div>'; return; }
-  body.innerHTML='<div class="qhint">Drag &#9776; to reorder · tap a song to play it now</div><button class="qclear" id="qClear">Clear queue</button><div class="qlist" id="qlist"></div>';
-  const list=$("qlist");
+  body.innerHTML='<div class="seg qtabs"><button data-qt="sundeck">Sundeck</button><button data-qt="spotify">Spotify</button></div><div id="qbody"></div>';
+  body.querySelectorAll(".qtabs button").forEach(b=>{ b.classList.toggle("on",b.dataset.qt===queueTab); b.addEventListener("click",()=>{ queueTab=b.dataset.qt; renderQueueDrawer(); }); });
+  if(queueTab==="spotify") renderSpotifyQueue($("qbody"));
+  else renderSundeckQueue($("qbody"));
+}
+function renderSundeckQueue(c){
+  if(!sq.length){ c.innerHTML='<div class="muted">Your Up Next is empty.<br>Tap ＋ on any song in Search or Library to add it here, then drag to reorder.</div>'; return; }
+  c.innerHTML='<div class="qhint">Drag &#9776; to reorder · tap a song to play it now</div><button class="qclear" id="qClear">Clear queue</button><div class="qlist" id="qlist"></div>';
+  const list=c.querySelector("#qlist");
   sq.forEach((t,i)=>{
     const now=sqActive&&i===sqIndex;
     const row=document.createElement("div");
@@ -845,9 +857,36 @@ function renderQueue(){
     list.appendChild(row);
   });
   enableSort(list);
-  $("qClear").addEventListener("click",()=>{ sq=[]; sqIndex=-1; sqActive=false; sqSave(); renderQueue(); });
+  c.querySelector("#qClear").addEventListener("click",()=>{ sq=[]; sqIndex=-1; sqActive=false; sqSave(); refreshQueue(); });
 }
-function openQueue(){ queueOpen=true; renderQueue(); $("drawer").classList.add("open"); }
+function spRow(tr,now){
+  const imgs=(tr.album&&tr.album.images)||[]; const img=(imgs[2]&&imgs[2].url)||(imgs[0]&&imgs[0].url);
+  const art=img?`<img src="${esc(img)}" alt="">`:'<div class="ph">&#9834;</div>';
+  const sub=now?"Now playing":esc((tr.artists||[]).map(a=>a.name).join(", "));
+  return `${art}<div class="info"><div class="n">${esc(tr.name||"Untitled")}</div><div class="s">${sub}</div></div>`+(now?'':'<span class="qskip" title="Skip to here">&#9197;</span>');
+}
+async function renderSpotifyQueue(c){
+  c.innerHTML='<div class="muted">Loading Spotify queue…</div>';
+  try{
+    const d=await api("/me/player/queue");
+    const cur=d&&d.currently_playing, q=(d&&d.queue)||[];
+    if(!cur&&!q.length){ c.innerHTML='<div class="muted">Nothing is playing through Spotify right now.</div>'; return; }
+    c.innerHTML='<div class="qhint">This is your live Spotify queue. Tap a song to skip ahead to it.<br>(Spotify doesn’t allow apps to reorder its own queue.)</div><div class="qlist" id="spqlist"></div>';
+    const list=c.querySelector("#spqlist");
+    if(cur){ const el=document.createElement("div"); el.className="qitem qnow"; el.innerHTML=spRow(cur,true); list.appendChild(el); }
+    q.slice(0,50).forEach((tr,i)=>{ if(!tr) return; const el=document.createElement("div"); el.className="qitem qtap"; el.innerHTML=spRow(tr,false); el.addEventListener("click",()=>spotifySkipTo(i,tr.name)); list.appendChild(el); });
+  }catch(e){ c.innerHTML='<div class="muted">Couldn\'t load the Spotify queue.</div>'; }
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+async function spotifySkipTo(i,name){
+  if(!deviceId&&!player){ toast("Player not ready"); return; }
+  toast("Skipping to "+(name?("“"+name+"”"):"song")+"…");
+  for(let k=0;k<=i;k++){ try{ await api("/me/player/next",{method:"POST"}); }catch(_){} await sleep(280); }
+  sqActive=false;
+  await sleep(500);
+  if(queueOpen&&queueTab==="spotify") renderQueueDrawer();
+}
+function openQueue(){ queueOpen=true; renderQueueDrawer(); $("drawer").classList.add("open"); }
 $("queueBtn").addEventListener("click",openQueue);
 
 /* touch + mouse drag-sort for the queue */
@@ -886,7 +925,7 @@ function commitOrder(){
   sqIndex=cur?sq.indexOf(cur):-1;
   sqSave();
   if(sqActive) sqReapply();
-  renderQueue();
+  refreshQueue();
 }
 
 async function init(){
