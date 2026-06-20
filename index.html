@@ -105,6 +105,7 @@
   .set-opts button{flex:1;min-width:0;background:var(--paper3);border:2px solid var(--ink);border-radius:9px;font-family:'VT323',monospace;font-size:16px;color:var(--ink);padding:6px 2px;cursor:pointer;line-height:1;transition:transform .1s;}
   .set-opts button:active{transform:translateY(1px);}
   .set-opts button.on{background:var(--amber);color:var(--accent-ink);}
+  #themeOpts button{font-size:14px;padding:6px 1px;letter-spacing:0;}
   .devlist{display:flex;flex-direction:column;gap:5px;}
   .devlist .dv{display:flex;align-items:center;gap:8px;background:var(--paper3);border:2px solid var(--ink);border-radius:9px;padding:7px 9px;font-size:15px;cursor:pointer;color:var(--ink);}
   .devlist .dv.on{background:var(--amber);color:var(--accent-ink);}
@@ -344,6 +345,7 @@
           <button data-theme="day">Day</button>
           <button data-theme="sunset">Sunset</button>
           <button data-theme="night">Night</button>
+          <button data-theme="dynamic">Auto</button>
         </div>
       </div>
       <div class="set-sec">
@@ -613,6 +615,7 @@ function setNowPlaying(tr){
     $("imArt").style.backgroundImage=`url("${url}")`;
     $("imAmb").style.backgroundImage=`url("${url}")`;
     setAmbient(url);
+    lastArtUrl=url; if(currentTheme==="dynamic") applyDynamicFromArt(url);
   }
   document.title=tr.name+" — Sundeck";
 }
@@ -1006,9 +1009,56 @@ $("accessSignout").addEventListener("click",()=>{ store.clear(); location.reload
 $("disconnectBtn").addEventListener("click",()=>{ if(confirm("Disconnect Spotify?")){ store.clear(); location.reload(); } });
 document.addEventListener("click",(e)=>{ const pop=$("settingsPop"); if(!pop.classList.contains("open")) return; if(pop.contains(e.target)||$("gearBtn").contains(e.target)||$("devChip").contains(e.target)) return; pop.classList.remove("open"); });
 
-/* themes */
-const THEMES=["day","sunset","night"];
-function applyTheme(t){ if(!THEMES.includes(t)) t="day"; document.documentElement.setAttribute("data-theme",t); try{ localStorage.setItem("sundeck_theme",t); }catch(_){} document.querySelectorAll("#themeOpts button").forEach(b=>b.classList.toggle("on",b.dataset.theme===t)); const meta=document.querySelector('meta[name="theme-color"]'); if(meta) meta.setAttribute("content", getComputedStyle(document.documentElement).getPropertyValue("--paper").trim()||"#efe6d3"); }
+/* themes — Day/Sunset/Night are static; Dynamic ("Auto") retints from album art */
+const THEMES=["day","sunset","night","dynamic"];
+let currentTheme="day", lastArtUrl=null;
+const DYN_VARS=["--paper","--paper2","--paper3","--white","--ink","--ink2","--panel","--panel2","--amber","--amber-dim","--glow","--accent-ink","--on-bg","--shadow","--pink"];
+function updateThemeColorMeta(){ const meta=document.querySelector('meta[name="theme-color"]'); if(meta) meta.setAttribute("content", getComputedStyle(document.documentElement).getPropertyValue("--paper").trim()||"#efe6d3"); }
+function clearDynamic(){ const st=document.documentElement.style; DYN_VARS.forEach(v=>st.removeProperty(v)); }
+function rgb2hsl(r,g,b){ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b); let h=0,s=0,l=(mx+mn)/2; const d=mx-mn;
+  if(d){ s=l>0.5?d/(2-mx-mn):d/(mx+mn); h=mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4); h*=60; } return [h,s,l]; }
+function buildDynamicPalette(b){
+  const h=Math.round(b.h);
+  const s=Math.min(0.95,Math.max(0.55,b.s));
+  const aL=Math.min(0.62,Math.max(0.48,b.l));
+  const hsl=(hh,ss,ll)=>`hsl(${Math.round((hh%360+360)%360)} ${Math.round(ss*100)}% ${Math.round(ll*100)}%)`;
+  return {
+    "--amber":hsl(h,s,aL), "--amber-dim":hsl(h,s,Math.max(0.32,aL-0.16)),
+    "--paper":hsl(h,0.30,0.90), "--paper2":hsl(h,0.30,0.84), "--paper3":hsl(h,0.34,0.94), "--white":hsl(h,0.30,0.965),
+    "--ink":hsl(h,0.42,0.13), "--ink2":hsl(h,0.26,0.31),
+    "--panel":hsl(h,0.40,0.08), "--panel2":hsl(h,0.34,0.13),
+    "--glow":hsl(h,0.42,0.92), "--accent-ink":hsl(h,0.42,0.13), "--on-bg":hsl(h,0.42,0.13),
+    "--shadow":`hsla(${(h%360+360)%360},42%,13%,.16)`, "--pink":hsl((h+20)%360,0.45,0.80)
+  };
+}
+function extractPalette(url,cb){
+  const img=new Image(); img.crossOrigin="anonymous";
+  img.onload=()=>{ try{
+    const s=28,c=document.createElement("canvas"); c.width=s; c.height=s;
+    const x=c.getContext("2d"); x.drawImage(img,0,0,s,s);
+    const data=x.getImageData(0,0,s,s).data; let best=null;
+    for(let i=0;i<data.length;i+=4){ if(data[i+3]<200) continue;
+      const hsl=rgb2hsl(data[i],data[i+1],data[i+2]);
+      const score=hsl[1]*(1-Math.abs(hsl[2]-0.5)*1.1);
+      if(!best||score>best.score) best={score,h:hsl[0],s:hsl[1],l:hsl[2]};
+    }
+    if(!best||best.s<0.08){ cb(null); return; }   // greyscale cover → keep neutral base
+    cb(buildDynamicPalette(best));
+  }catch(e){ cb(null); } };
+  img.onerror=()=>cb(null);
+  img.src=url;
+}
+function applyDynamicFromArt(url){ if(!url) return; extractPalette(url,(pal)=>{ if(currentTheme!=="dynamic"||!pal) return; const st=document.documentElement.style; for(const k in pal) st.setProperty(k,pal[k]); updateThemeColorMeta(); }); }
+function applyTheme(t){
+  if(!THEMES.includes(t)) t="day";
+  currentTheme=t;
+  document.documentElement.setAttribute("data-theme",t);   // 'dynamic' matches no rule → Day palette is the base, then we override
+  try{ localStorage.setItem("sundeck_theme",t); }catch(_){}
+  document.querySelectorAll("#themeOpts button").forEach(b=>b.classList.toggle("on",b.dataset.theme===t));
+  if(t==="dynamic"){ if(lastArtUrl) applyDynamicFromArt(lastArtUrl); }
+  else clearDynamic();
+  updateThemeColorMeta();
+}
 (function(){ let t="day"; try{ t=localStorage.getItem("sundeck_theme")||"day"; }catch(_){} applyTheme(t); })();
 document.querySelectorAll("#themeOpts button").forEach(b=>b.addEventListener("click",()=>applyTheme(b.dataset.theme)));
 
