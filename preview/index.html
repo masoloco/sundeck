@@ -187,6 +187,7 @@
   .qitem .info .n{font-family:'VT323',monospace;font-weight:700;font-size:17px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .qitem .info .s{font-family:'VT323',monospace;font-size:14px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .qitem.qnow .info .s{color:var(--amber-dim);}
+  .qitem.loading{pointer-events:none;opacity:.62;}
   .qx{flex:0 0 auto;background:none;border:none;color:var(--ink2);font-size:15px;cursor:pointer;padding:6px;line-height:1;opacity:.7;}
   .qx:active{opacity:1;}
   .qadd{flex:0 0 auto;background:var(--paper3);border:2px solid var(--ink);border-radius:8px;width:32px;height:32px;font-size:18px;color:var(--ink);cursor:pointer;box-shadow:2px 2px 0 var(--ink);line-height:1;padding:0;}
@@ -830,16 +831,29 @@ async function renderSpotifyQueue(c){
     c.innerHTML='<div class="qhint">Tap a song to skip ahead to it.</div><div class="qlist" id="spqlist"></div>';
     const list=c.querySelector("#spqlist");
     if(cur){ const el=document.createElement("div"); el.className="qitem qnow"; el.innerHTML=spRow(cur,true); list.appendChild(el); }
-    q.slice(0,50).forEach((tr,i)=>{ if(!tr) return; const el=document.createElement("div"); el.className="qitem qtap"; el.innerHTML=spRow(tr,false); el.addEventListener("click",()=>spotifySkipTo(i,tr.name)); list.appendChild(el); });
+    const visible=q.slice(0,50);
+    visible.forEach((tr,i)=>{ if(!tr) return; const el=document.createElement("div"); el.className="qitem qtap"; el.innerHTML=spRow(tr,false); el.addEventListener("click",()=>playQueuedTrack(tr,visible.slice(i),el)); list.appendChild(el); });
   }catch(e){ c.innerHTML='<div class="muted">Couldn\'t load the queue.</div>'; }
 }
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-async function spotifySkipTo(i,name){
-  if(!deviceId&&!player){ toast("Player not ready"); return; }
-  toast("Skipping to "+(name?("“"+name+"”"):"song")+"…");
-  for(let k=0;k<=i;k++){ try{ await api("/me/player/next",{method:"POST"}); }catch(_){} await sleep(280); }
-  await sleep(500);
-  if(queueOpen) renderSpotifyQueue($("drawerBody"));
+async function playQueuedTrack(tr,rest,row){
+  if(!tr||!tr.uri){ toast("That queue item can't be played"); return; }
+  if(!deviceId){ toast("Player not ready"); return; }
+  const uris=(rest||[]).map(t=>t&&t.uri).filter(Boolean);
+  if(!uris.length) uris.push(tr.uri);
+  if(row) row.classList.add("loading");
+  try{
+    shuffleOn=false; $("shuffleBtn").classList.remove("on");
+    try{ await api(`/me/player/shuffle?state=false&device_id=${deviceId}`,{method:"PUT"}); }catch(_){}
+    repeatMode="off"; reflectRepeat();
+    try{ await api(`/me/player/repeat?state=off&device_id=${deviceId}`,{method:"PUT"}); }catch(_){}
+    await api(`/me/player/play?device_id=${deviceId}`,{method:"PUT",body:JSON.stringify({uris})});
+    setSource("Up Next");
+    toast("Playing "+(tr.name?("“"+tr.name+"”"):"song"));
+    closeDrawer();
+  }catch(e){
+    toast("Couldn't start that song");
+    if(row) row.classList.remove("loading");
+  }
 }
 function openQueue(){ queueOpen=true; $("drawerTitle").textContent="Up Next"; $("searchBox").classList.add("hidden"); renderSpotifyQueue($("drawerBody")); $("drawer").classList.add("open"); }
 $("queueBtn").addEventListener("click",openQueue);
